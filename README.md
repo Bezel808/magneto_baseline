@@ -46,7 +46,7 @@ The data folder contains the datasets used for data integration tasks. Download 
 
 This step is optional but required for `MagnetoFT` and `MagnetoFTGPT`. You can use fine-tuned models in two ways:
 
-1. **HuggingFace (Recommended)**: Use the fine-tuned GDC retriever directly from HuggingFace:
+1. **HuggingFace (Recommended for GDC)**: Use the fine-tuned GDC retriever directly from HuggingFace:
    ```python
    from magneto import Magneto
    mag = Magneto(embedding_model="vida-nyu/magneto-schema-retriever-gdc")
