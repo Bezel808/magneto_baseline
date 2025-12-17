@@ -83,7 +83,6 @@ To use `LLaMA3.3` as the LLM reranker, you can also set up `LLAMA_API_KEY` accor
 |-- experiments
     |-- ablations # code for ablation study
     |-- benchmark # code for benchmark study, note that batched benchmark on baseline methods are on this [repo](https://github.com/VIDA-NYU/data-harmonization-benchmark)
-|-- results_visualization # notebooks for results visualization
 ```
 
 ## Example Usage
