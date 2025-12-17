@@ -26,28 +26,45 @@ class EmbeddingMatcher:
         self.model_name = params["embedding_model"]
         self.use_prompt_query = True if "arctic" in self.model_name else False
 
-        base_key = next((key for key in DEFAULT_MODELS if key in self.model_name), "mpnet")
-        if base_key not in DEFAULT_MODELS:
-            print(f"Warning: No base model detected in {self.model_name}, defaulting to 'mpnet'")
-            base_key = "mpnet"
-
-        base_model_path = DEFAULT_MODELS[base_key]
-        self.model = SentenceTransformer(base_model_path, device=self.device)
-        self.tokenizer = AutoTokenizer.from_pretrained(base_model_path)
-
         # Load model and tokenizer
         if self.model_name in DEFAULT_MODELS:
+            # Use default model directly
+            model_path = DEFAULT_MODELS[self.model_name]
+            self.model = SentenceTransformer(model_path, device=self.device)
+            self.tokenizer = AutoTokenizer.from_pretrained(model_path)
             print(f"Loaded default model '{self.model_name}' on {self.device}")
-        else:
+        elif "/" in self.model_name and not os.path.exists(self.model_name):
+            # HuggingFace model identifier (contains "/" but not a local file path)
+            try:
+                self.model = SentenceTransformer(self.model_name, device=self.device)
+                self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+                print(f"Loaded HuggingFace model '{self.model_name}' on {self.device}")
+            except Exception as e:
+                print(f"Failed to load HuggingFace model '{self.model_name}': {e}")
+                print("Falling back to default 'mpnet' model")
+                model_path = DEFAULT_MODELS["mpnet"]
+                self.model = SentenceTransformer(model_path, device=self.device)
+                self.tokenizer = AutoTokenizer.from_pretrained(model_path)
+        elif os.path.exists(self.model_name):
+            # Local fine-tuned model file
+            base_key = next((key for key in DEFAULT_MODELS if key in self.model_name), "mpnet")
+            if base_key not in DEFAULT_MODELS:
+                print(f"Warning: No base model detected in {self.model_name}, defaulting to 'mpnet'")
+                base_key = "mpnet"
+            base_model_path = DEFAULT_MODELS[base_key]
+            self.model = SentenceTransformer(base_model_path, device=self.device)
+            self.tokenizer = AutoTokenizer.from_pretrained(base_model_path)
             print(f"Loaded base model '{base_key}' on {self.device}")
-            # Load fine-tuned weights if available
-            if os.path.exists(self.model_name):
-                print(f"Loading fine-tuned weights from {self.model_name}")
-                state_dict = torch.load(self.model_name, map_location=self.device)
-                self.model.load_state_dict(state_dict)
-                self.model.eval().to(self.device)
-            else:
-                print(f"No local model found at {self.model_name}, using base model")
+            print(f"Loading fine-tuned weights from {self.model_name}")
+            state_dict = torch.load(self.model_name, map_location=self.device, weights_only=True)
+            self.model.load_state_dict(state_dict)
+            self.model.eval().to(self.device)
+        else:
+            # Fallback to default model
+            print(f"Warning: Model '{self.model_name}' not found, using default 'mpnet' model")
+            model_path = DEFAULT_MODELS["mpnet"]
+            self.model = SentenceTransformer(model_path, device=self.device)
+            self.tokenizer = AutoTokenizer.from_pretrained(model_path)
 
     def _get_embeddings(self, texts, use_prompt_query=False, batch_size=32):
         """Get embeddings using Sentence Transformer's encode method"""
