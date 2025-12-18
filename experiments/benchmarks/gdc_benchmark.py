@@ -250,7 +250,7 @@ def main():
     parser.add_argument(
         "--embedding_model",
         type=str,
-        help="path to the embedding model",
+        help="embedding model: default model name (mpnet, roberta, e5, arctic, minilm), HuggingFace identifier (e.g., vida-nyu/magneto-schema-retriever-gdc), or path to local .pth file",
         default="mpnet",
     )
     parser.add_argument(

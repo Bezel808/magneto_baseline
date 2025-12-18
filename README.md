@@ -44,7 +44,20 @@ The data folder contains the datasets used for data integration tasks. Download 
 
 ### Download the fine-tuned model for GDC benchmark
 
-This step is optional but required for `MagnetoFT` and `MagnetoFTGPT`. Download the fine-tuned model of your choice from [this Google Drive link](https://drive.google.com/drive/folders/1vlWaTm4rpEH4hs-Kq3mhSfTyffhDEp6P?usp=sharing) and place it in the `models` directory.
+This step is optional but required for `MagnetoFT` and `MagnetoFTGPT`. You can use fine-tuned models in two ways:
+
+1. **HuggingFace (Recommended for GDC)**: Use the fine-tuned GDC retriever directly from HuggingFace:
+   ```python
+   from magneto import Magneto
+   mag = Magneto(embedding_model="vida-nyu/magneto-schema-retriever-gdc")
+   ```
+   The model will be automatically downloaded and cached on first use.
+
+2. **Local Model Files**: Download the fine-tuned model of your choice from [this Google Drive link](https://drive.google.com/drive/folders/1vlWaTm4rpEH4hs-Kq3mhSfTyffhDEp6P?usp=sharing) and place it in the `models` directory. Then use the local path:
+   ```python
+   from magneto import Magneto
+   mag = Magneto(embedding_model="models/mpnet-gdc-semantic-64-0.5.pth")
+   ```
 
 ### Set the Environment Variable
 This step is optional but required for `MagnetoGPT` and `MagnetoFTGPT`. Set the `OPENAI_API_KEY` environment variable using the following commands based on your operating system:
@@ -70,7 +83,6 @@ To use `LLaMA3.3` as the LLM reranker, you can also set up `LLAMA_API_KEY` accor
 |-- experiments
     |-- ablations # code for ablation study
     |-- benchmark # code for benchmark study, note that batched benchmark on baseline methods are on this [repo](https://github.com/VIDA-NYU/data-harmonization-benchmark)
-|-- results_visualization # notebooks for results visualization
 ```
 
 ## Example Usage
@@ -79,7 +91,10 @@ To reproduce the GDC benchmark results, you can run the following command:
 python experiments/benchmarks/gdc_benchmark.py --mode [MODE] --embedding_model [EMBEDDING_MODEL] --llm_model [LLM_MODEL]
 ```
 - `[MODE]`: Specifies the operational mode. Options include: `header-value-default`, `header-value-repeat`, and `header-value-verbose`.
-- `[EMBEDDING_MODEL]`: Selects the pre-trained language model to use as the retriever. Available options are `mpnet`, `roberta`, `e5`, `arctic`, or `minilm`. The default model is `mpnet`.
+- `[EMBEDDING_MODEL]`: Selects the pre-trained language model to use as the retriever. Available options are:
+  - Default models: `mpnet`, `roberta`, `e5`, `arctic`, or `minilm` (default: `mpnet`)
+  - HuggingFace models: Use a HuggingFace model identifier (e.g., `vida-nyu/magneto-schema-retriever-gdc` for the fine-tuned GDC retriever)
+  - Local fine-tuned models: Provide a path to a local `.pth` model file (e.g., `models/mpnet-gdc-semantic-64-0.5.pth`)
 - `[LLM_MODEL]`: Specifies the llm-based reranker. Current options are `gpt-4o-mini` or `llama3.3-70b`.
 
 To reproduce the Valentine benchmark results, you can run the following command:
@@ -94,6 +109,37 @@ where `[MODE]` is similar to the GDC benchmark and `[DATASET]` can be one of the
 - `wikidata`
 
 You can also change other Magneto configurations in the corresponding benchmark file.
+
+### Using the Fine-tuned GDC Retriever from HuggingFace
+
+To use the fine-tuned retriever model for GDC benchmark tasks, you can specify the HuggingFace model identifier:
+
+```bash
+python experiments/benchmarks/gdc_benchmark.py --mode header_values_verbose --embedding_model vida-nyu/magneto-schema-retriever-gdc --llm_model gpt-4o-mini
+```
+
+Or in Python code:
+
+```python
+from magneto import Magneto
+import pandas as pd
+
+# Load your source and target DataFrames
+source_df = pd.read_csv("path/to/source.csv")
+target_df = pd.read_csv("path/to/target.csv")
+
+# Initialize Magneto with the HuggingFace fine-tuned model
+mag = Magneto(
+    embedding_model="vida-nyu/magneto-schema-retriever-gdc",
+    encoding_mode="header_values_verbose",
+    topk=20
+)
+
+# Get matches
+matches = mag.get_matches(source_df, target_df)
+```
+
+The model will be automatically downloaded from HuggingFace on first use and cached locally for subsequent runs. For more information about the model, visit its [HuggingFace page](https://huggingface.co/vida-nyu/magneto-schema-retriever-gdc).
 
 ## Citation
 
