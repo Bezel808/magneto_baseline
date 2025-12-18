@@ -8,11 +8,10 @@ if __name__ == "__main__":
 
     # when
     mode = "header_values_verbose"
-    model_path = (
-        "/Users/rlopez/Downloads/mpnet-gdc-header_values_verbose-semantic-64-0.5.pth"
-    )
+    model = "vida-nyu/magneto-schema-retriever-gdc"
 
-    mag = Magneto(encoding_mode=mode, embedding_model=model_path)
+
+    mag = Magneto(encoding_mode=mode, embedding_model=model)
     matches = mag.get_matches(source, target)
 
     print(matches)
