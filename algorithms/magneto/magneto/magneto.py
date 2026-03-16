@@ -56,6 +56,8 @@ class Magneto:
         """
         # Merge provided kwargs with defaults, use params in case you need more parameters: for ablation, etc
         self.params = {**self.DEFAULT_PARAMS, **kwargs}
+        # Reuse a single embedding matcher instance to avoid reloading the model per table pair.
+        self._embedding_matcher = None
 
     def apply_strsim_matches(self) -> None:
         """
@@ -77,9 +79,10 @@ class Magneto:
         if not self.params["include_embedding_matches"]:
             return
 
-        embeddingMatcher = EmbeddingMatcher(params=self.params)
+        if self._embedding_matcher is None:
+            self._embedding_matcher = EmbeddingMatcher(params=self.params)
 
-        embedding_candidates = embeddingMatcher.get_embedding_similarity_candidates(
+        embedding_candidates = self._embedding_matcher.get_embedding_similarity_candidates(
             self.df_source, self.df_target
         )
         for (col_source, col_target), score in embedding_candidates.items():

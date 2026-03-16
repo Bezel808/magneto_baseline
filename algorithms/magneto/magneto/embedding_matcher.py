@@ -22,7 +22,19 @@ class EmbeddingMatcher:
         self.params = params
         self.topk = params["topk"]
         self.embedding_threshold = params["embedding_threshold"]
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        requested_device = params.get("device", None)
+        if requested_device is not None:
+            req = str(requested_device).strip().lower()
+            if req.startswith("cuda"):
+                if torch.cuda.is_available():
+                    self.device = torch.device(requested_device)
+                else:
+                    print(f"Requested device '{requested_device}' but CUDA is unavailable; fallback to cpu")
+                    self.device = torch.device("cpu")
+            else:
+                self.device = torch.device(requested_device)
+        else:
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model_name = params["embedding_model"]
         self.use_prompt_query = True if "arctic" in self.model_name else False
 
@@ -31,7 +43,7 @@ class EmbeddingMatcher:
             # Use default model directly
             model_path = DEFAULT_MODELS[self.model_name]
             self.model = SentenceTransformer(model_path, device=self.device)
-            self.tokenizer = AutoTokenizer.from_pretrained(model_path)
+            self.tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
             print(f"Loaded default model '{self.model_name}' on {self.device}")
         elif "/" in self.model_name and not self.model_name.endswith((".pth", ".pt", ".bin", ".ckpt")):
             # HuggingFace model identifier (contains "/" and doesn't look like a file extension)
@@ -39,7 +51,7 @@ class EmbeddingMatcher:
             try:
                 print(f"Attempting to load HuggingFace model '{self.model_name}'...")
                 self.model = SentenceTransformer(self.model_name, device=self.device)
-                self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+                self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, use_fast=False)
                 print(f"Successfully loaded HuggingFace model '{self.model_name}' on {self.device}")
             except Exception as e:
                 print(f"Failed to load HuggingFace model '{self.model_name}': {e}")
@@ -48,7 +60,7 @@ class EmbeddingMatcher:
                 print("Falling back to default 'mpnet' model")
                 model_path = DEFAULT_MODELS["mpnet"]
                 self.model = SentenceTransformer(model_path, device=self.device)
-                self.tokenizer = AutoTokenizer.from_pretrained(model_path)
+                self.tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
         elif os.path.exists(self.model_name) and os.path.isfile(self.model_name):
             # Local fine-tuned model file - check this BEFORE HuggingFace to avoid false positives
             base_key = next((key for key in DEFAULT_MODELS if key in self.model_name), "mpnet")
@@ -57,7 +69,7 @@ class EmbeddingMatcher:
                 base_key = "mpnet"
             base_model_path = DEFAULT_MODELS[base_key]
             self.model = SentenceTransformer(base_model_path, device=self.device)
-            self.tokenizer = AutoTokenizer.from_pretrained(base_model_path)
+            self.tokenizer = AutoTokenizer.from_pretrained(base_model_path, use_fast=False)
             print(f"Loaded base model '{base_key}' on {self.device}")
             print(f"Loading fine-tuned weights from {self.model_name}")
             state_dict = torch.load(self.model_name, map_location=self.device, weights_only=True)

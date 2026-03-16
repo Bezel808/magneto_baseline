@@ -54,6 +54,9 @@ def bipartite_filtering(
 def arrange_bipartite_matches(
     initial_matches, source_table, source_table_name, target_table, target_table_name
 ):
+    if not initial_matches:
+        return MatcherResults({})
+
     filtered_matches = bipartite_filtering(
         initial_matches,
         source_table_name,
@@ -70,6 +73,9 @@ def arrange_bipartite_matches(
     min_filtered_score = min(filtered_matches.values())
 
     # Calculate the scaling factor to keep scores in initial_matches just below min_filtered_score
+    if not initial_matches:
+        return filtered_matches
+
     initial_max_score = max(initial_matches.values())
     scaling_factor = (
         (min_filtered_score - 0.01) / initial_max_score if initial_max_score > 0 else 1

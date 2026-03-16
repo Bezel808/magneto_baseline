@@ -1,4 +1,5 @@
 import re
+import math
 
 import mmh3
 import numpy as np
@@ -129,10 +130,29 @@ def clean_df(df):
 
 
 def detect_column_type(col, key_threshold=0.8, numeric_threshold=0.90):
-    # Try converting to numeric (int or float)
-    temp_col = pd.to_numeric(col, errors="coerce")
-    if not temp_col.isnull().all():
-        return "numerical"
+    def _is_numeric_like(v):
+        if v is None or (isinstance(v, float) and math.isnan(v)):
+            return False
+        if isinstance(v, (int, float, np.integer, np.floating)):
+            return True
+        if isinstance(v, str):
+            s = v.strip()
+            if s == "":
+                return False
+            # Remove simple thousands separators before float parse.
+            s = s.replace(",", "")
+            try:
+                float(s)
+                return True
+            except Exception:
+                return False
+        return False
+
+    non_null = col.dropna()
+    if len(non_null) > 0:
+        n_numeric = sum(1 for v in non_null if _is_numeric_like(v))
+        if n_numeric / len(non_null) > numeric_threshold:
+            return "numerical"
 
     if "gene" in col.name.lower():
         # TODO, implement a less naive approach
@@ -164,15 +184,14 @@ def detect_column_type(col, key_threshold=0.8, numeric_threshold=0.90):
     if col.dtype in [np.float64, np.int64]:
         return "numerical"
 
-    numeric_unique_values = pd.Series(pd.to_numeric(unique_values, errors="coerce"))
-    numeric_unique_values = numeric_unique_values.dropna()
+    numeric_unique_values = [v for v in unique_values if _is_numeric_like(v)]
 
-    if not numeric_unique_values.empty:
+    if len(numeric_unique_values) > 0:
         if len(numeric_unique_values) / len(unique_values) > numeric_threshold:
             if len(numeric_unique_values) > 2:
                 return "numerical"
             else:
-                unique_values_as_int = set(map(int, unique_values))
+                unique_values_as_int = set(int(float(v)) for v in numeric_unique_values)
                 if unique_values_as_int.issubset({0, 1}):
                     return "binary"
                 else:
