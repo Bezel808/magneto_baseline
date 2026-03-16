@@ -18,12 +18,15 @@ fi
 
 DATASET_ROOT="${DATASET_ROOT:-/home/mengshi/table_quality/datasets_joint_discovery_integration}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-${ROOT}/runs/magneto_sm_1218}"
+LOG_ROOT="${LOG_ROOT:-${ROOT}/logs/magneto_sm_1218}"
 MODE="${MODE:-header_values_default}"
 TOPK="${TOPK:-20}"
 EMB_THRESH="${EMB_THRESH:-0.1}"
-DEVICE="${DEVICE:-cpu}"
+GPU="${GPU:-}"   # physical GPU id, e.g. 0/1; empty means do not override
+DEVICE="${DEVICE:-cpu}"   # python-side device string: cpu / cuda:0
 MAX_PAIRS_PER_WORKER="${MAX_PAIRS_PER_WORKER:-30}"
 DATASETS="${DATASETS:-wikidbs_1218 santos_benchmark_1218 magellan_1218}"
+TS="$(date +%Y%m%d_%H%M%S)"
 
 cd "${ROOT}"
 if [[ ! -f "${ROOT}/run_magneto_sm_1218_chunked.py" ]]; then
@@ -38,6 +41,8 @@ fi
 export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
 export TRANSFORMERS_OFFLINE="${TRANSFORMERS_OFFLINE:-1}"
 export PYTHONPATH="${ROOT}/algorithms/magneto:${PYTHONPATH:-}"
+mkdir -p "${LOG_ROOT}"
+LOG_FILE="${LOG_ROOT}/run_magneto_0316_${TS}.log"
 
 echo "[RUN] ROOT=${ROOT}"
 echo "[RUN] PYTHON_BIN=${PYTHON_BIN}"
@@ -45,14 +50,24 @@ echo "[RUN] DATASET_ROOT=${DATASET_ROOT}"
 echo "[RUN] DATASETS=${DATASETS}"
 echo "[RUN] OUTPUT_ROOT=${OUTPUT_ROOT}"
 echo "[RUN] DEVICE=${DEVICE}"
+echo "[RUN] GPU=${GPU:-<not-set>}"
+echo "[RUN] LOG_FILE=${LOG_FILE}"
 
-"${PYTHON_BIN}" run_magneto_sm_1218_chunked.py \
-  --dataset-root "${DATASET_ROOT}" \
-  --output-root "${OUTPUT_ROOT}" \
-  --mode "${MODE}" \
-  --topk "${TOPK}" \
-  --embedding-threshold "${EMB_THRESH}" \
-  --device "${DEVICE}" \
-  --max-pairs-per-worker "${MAX_PAIRS_PER_WORKER}" \
-  --datasets ${DATASETS} \
+CMD=(
+  "${PYTHON_BIN}" -u run_magneto_sm_1218_chunked.py
+  --dataset-root "${DATASET_ROOT}"
+  --output-root "${OUTPUT_ROOT}"
+  --mode "${MODE}"
+  --topk "${TOPK}"
+  --embedding-threshold "${EMB_THRESH}"
+  --device "${DEVICE}"
+  --max-pairs-per-worker "${MAX_PAIRS_PER_WORKER}"
+  --datasets ${DATASETS}
   "$@"
+)
+
+if [[ -n "${GPU}" ]]; then
+  CUDA_VISIBLE_DEVICES="${GPU}" /usr/bin/time -v "${CMD[@]}" 2>&1 | tee "${LOG_FILE}"
+else
+  /usr/bin/time -v "${CMD[@]}" 2>&1 | tee "${LOG_FILE}"
+fi
